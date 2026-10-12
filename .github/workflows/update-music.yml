@@ -14,40 +14,36 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
         run: |
-          RESPONSE=$(curl -s "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=jamsenup&api_key=02c9bd9aa8737a715c3cc09eef021c63&format=json&limit=1")
+          TRACK=$(python3 - <<'PYEOF'
+import json, urllib.request, sys
 
-          TRACK=$(python3 - <<'EOF'
-import sys, json, urllib.request
-
-url = "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=jamsenup&api_key=02c9bd9aa8737a715c3cc09eef021c63&format=json&limit=1"
+url = 'https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=jamsenup&api_key=02c9bd9aa8737a715c3cc09eef021c63&format=json&limit=1'
 with urllib.request.urlopen(url) as r:
     data = json.load(r)
 
-tracks = data.get("recenttracks", {}).get("track", [])
-total = int(data.get("recenttracks", {}).get("@attr", {}).get("total", 0))
+tracks = data.get('recenttracks', {}).get('track', [])
+total = int(data.get('recenttracks', {}).get('@attr', {}).get('total', 0))
 
 if not tracks or total == 0:
-    print("Музыка не играет")
+    print('No music playing')
     sys.exit(0)
 
 track = tracks[0] if isinstance(tracks, list) else tracks
-artist = track["artist"]["#text"]
-name = track["name"]
-now_playing = track.get("@attr", {}).get("nowplaying", "") == "true"
+artist = track['artist']['#text']
+name = track['name']
+now_playing = track.get('@attr', {}).get('nowplaying', '') == 'true'
 
 if now_playing:
-    print(f"{artist} - {name}")
+    print(f'{artist} - {name}')
 else:
-    print(f"Последний трек: {artist} - {name}")
-EOF
+    print(f'Last: {artist} - {name}')
+PYEOF
 )
 
           echo "Track: $TRACK"
-
-          PAYLOAD=$(python3 -c "import json; print(json.dumps({'files': {'music.txt': {'content': '$TRACK'}}}))")
-
+          ESCAPED=$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$TRACK")
           curl -s -X PATCH \
             -H "Authorization: token $GH_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
+            -d "{\"files\":{\"music.txt\":{\"content\":$ESCAPED}}}" \
             "https://api.github.com/gists/$GIST_ID"
