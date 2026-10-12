@@ -15,19 +15,19 @@ jobs:
           GIST_ID: ${{ secrets.GIST_ID }}
         run: |
           RESPONSE=$(curl -s "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=jamsenup&api_key=02c9bd9aa8737a715c3cc09eef021c63&format=json&limit=1")
-          TOTAL=$(echo "$RESPONSE" | jq -r '.recenttracks["@attr"].total')
+          TOTAL=$(echo "$RESPONSE" | jq -r '.recenttracks["@attr"].total // "0"')
 
-          if [ "$TOTAL" = "0" ]; then
-            TRACK="No music playing"
+          if [ "$TOTAL" = "0" ] || [ -z "$TOTAL" ]; then
+            TRACK="Сейчас ничего не играет"
           else
             TRACK_DATA=$(echo "$RESPONSE" | jq -r '.recenttracks.track | if type == "array" then .[0] else . end')
-            ARTIST=$(echo "$TRACK_DATA" | jq -r '.artist["#text"]')
-            NAME=$(echo "$TRACK_DATA" | jq -r '.name')
+            ARTIST=$(echo "$TRACK_DATA" | jq -r '.artist["#text"] // .artist.name // "Исполнитель"')
+            NAME=$(echo "$TRACK_DATA" | jq -r '.name // "Трек"')
             NOW=$(echo "$TRACK_DATA" | jq -r '.["@attr"].nowplaying // ""')
             if [ "$NOW" = "true" ]; then
-              TRACK="$ARTIST - $NAME"
+              TRACK="🎵 Сейчас играет: $ARTIST — $NAME"
             else
-              TRACK="Last: $ARTIST - $NAME"
+              TRACK="⏸️ На паузе (последний трек: $ARTIST — $NAME)"
             fi
           fi
 
