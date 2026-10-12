@@ -1,0 +1,5 @@
+{
+  "name": "lastfm-parser",
+  "version": "1.0.0",
+  "description": "Last.fm now playing parser for Twitch bot"
+}
